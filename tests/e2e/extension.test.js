@@ -287,3 +287,16 @@ test("a photo in the message is shown and sent to the AI as a JPEG", async () =>
   assert.equal(requests.at(-1).body.messages[1].images, undefined);
   assert.doesNotMatch(requests.at(-1).body.messages[1].content, /attached image/);
 });
+
+test("a photo without caption, drawn as a background, is still sent", async () => {
+  await wa.bringToFront();
+  await wa.hover('[data-id$="A2"] [data-testid="msg-container"]');
+  await wa.locator(".wa-asst-btn").waitFor({ state: "visible" });
+  await wa.locator(".wa-asst-btn").click();
+  await waitFor(async () => (await panel.locator("#targetText").textContent()) === "[image]");
+  await panel.locator("#targetImages img").waitFor();
+  assert.equal(await panel.locator("#targetSender").textContent(), "Them");
+  await panel.locator("#includeImages").check();
+  await panel.locator('#modeButtons button[data-mode="reply"]').click();
+  await waitFor(() => requests.at(-1).body.messages[1].images?.length === 1);
+});

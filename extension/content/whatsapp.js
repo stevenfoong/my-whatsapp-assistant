@@ -165,13 +165,32 @@
 
   // ---------------------------------------------------------------- images
 
+  // Quoted-reply previews (which can contain a small thumbnail of the quoted
+  // photo). Photos themselves also sit in a clickable role="button" area, so
+  // only blocks that look like quotes are excluded.
+  function quotedBlocks(row) {
+    return [...row.querySelectorAll('[role="button"]')].filter(
+      (b) => b.querySelector(".quoted-mention") || b.closest("[data-pre-plain-text]"),
+    );
+  }
+
+  function bigEnough(el) {
+    const r = el.getBoundingClientRect();
+    return r.width >= 60 && r.height >= 60;
+  }
+
   /** Photos inside a message (not emoji, avatars or quoted previews). */
   function imageElements(row) {
-    return [...row.querySelectorAll("img")].filter((img) => {
-      if (img.closest('[role="button"]')) return false; // quoted message preview
-      const r = img.getBoundingClientRect();
-      return r.width >= 60 && r.height >= 60;
-    });
+    const quoted = quotedBlocks(row);
+    const inQuote = (el) => quoted.some((q) => q.contains(el));
+    const out = [...row.querySelectorAll("img")].filter((img) => !inQuote(img) && bigEnough(img));
+    if (out.length) return out;
+    // Some builds draw the photo as a CSS background instead of an <img>.
+    for (const el of row.querySelectorAll('[style*="background-image"]')) {
+      const m = /url\(["']?(.*?)["']?\)/.exec(el.style.backgroundImage || "");
+      if (m && !inQuote(el) && bigEnough(el)) out.push({ src: m[1] });
+    }
+    return out;
   }
 
   function drawToJpeg(source, w, h) {
@@ -187,6 +206,11 @@
   }
 
   async function imageToBase64(img) {
+    if (!(img instanceof HTMLImageElement)) {
+      const el = new Image();
+      el.src = img.src;
+      img = el;
+    }
     try {
       if (img.decode) await img.decode().catch(() => {});
       if (img.naturalWidth) return drawToJpeg(img, img.naturalWidth, img.naturalHeight);
@@ -229,6 +253,10 @@
     const rows = messageRows();
     const parsed = rows.map(parseRow);
     const isGroup = chatIsGroup(parsed);
+    const title = chatTitle();
+    if (!isGroup && title) {
+      for (const m of parsed) if (!m.mine && m.sender === "Them") m.sender = title;
+    }
     let idx = -1;
     if (targetRow) idx = rows.indexOf(targetRow);
     else if (latest) {
@@ -250,7 +278,7 @@
       history = parsed.slice(-limit);
     }
     return {
-      title: chatTitle(),
+      title,
       isGroup,
       target,
       messages: history.map(forContext),
