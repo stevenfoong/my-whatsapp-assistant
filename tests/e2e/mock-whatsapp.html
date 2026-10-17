@@ -110,5 +110,16 @@
     <footer><div data-testid="compose-box"><div data-testid="conversation-compose-box-input" contenteditable="true" role="textbox"></div></div></footer>
   </div>
 </div>
+<script>
+  // Like WhatsApp's editor: takes over pastes (cancels the event) and inserts
+  // the text a little later, replacing the selection.
+  const box = document.querySelector('[data-testid="conversation-compose-box-input"]');
+  box.addEventListener("paste", (e) => {
+    e.preventDefault();
+    const text = e.clipboardData.getData("text/plain");
+    // Inserts at the current selection, like the real editor.
+    setTimeout(() => { box.focus(); document.execCommand("insertText", false, text); }, 120);
+  });
+</script>
 </body>
 </html>

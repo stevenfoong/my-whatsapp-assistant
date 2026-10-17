@@ -182,6 +182,19 @@ test("Insert puts the (edited) draft into the message box without sending", asyn
   await waitFor(async () =>
     (await wa.locator("footer [contenteditable]").textContent()).includes("Which instance is affected?"),
   );
+  await new Promise((r) => setTimeout(r, 400));
+  assert.equal(
+    await wa.locator("footer [contenteditable]").textContent(),
+    "Thank you for informing us. Which instance is affected?",
+    "inserted exactly once",
+  );
+  // Inserting again replaces the box content instead of appending.
+  await panel.locator(".draft .insert").first().click();
+  await new Promise((r) => setTimeout(r, 500));
+  assert.equal(
+    await wa.locator("footer [contenteditable]").textContent(),
+    "Thank you for informing us. Which instance is affected?",
+  );
   assert.match(await panel.locator("#status").textContent(), /press Enter to send/);
 });
 

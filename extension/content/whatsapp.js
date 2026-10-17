@@ -471,31 +471,54 @@
     return null;
   }
 
-  function insertText(text) {
-    const box = composer();
-    if (!box) return { ok: false, reason: "no-composer" };
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const norm = (x) => (x || "").replace(/\s+/g, " ").trim();
+
+  function selectAll(box) {
     box.focus();
     const sel = window.getSelection();
     const range = document.createRange();
     range.selectNodeContents(box);
     sel.removeAllRanges();
     sel.addRange(range);
+  }
 
-    // A paste is handled well by WhatsApp's editor (keeps line breaks).
+  async function waitForText(box, text, ms) {
+    const want = norm(text).slice(0, 40);
+    const end = Date.now() + ms;
+    do {
+      if (norm(box.textContent).includes(want)) return true;
+      await sleep(30);
+    } while (Date.now() < end);
+    return false;
+  }
+
+  /** Replace the message box content with `text`. Never presses send. */
+  async function insertText(text) {
+    const box = composer();
+    if (!box) return { ok: false, reason: "no-composer" };
+    selectAll(box);
+
+    // A paste keeps line breaks. WhatsApp's editor accepts it by cancelling the
+    // event and then inserts the text a moment later, so wait for it instead
+    // of inserting a second copy.
+    let accepted = false;
     try {
       const dt = new DataTransfer();
       dt.setData("text/plain", text);
-      box.dispatchEvent(new ClipboardEvent("paste", { clipboardData: dt, bubbles: true, cancelable: true }));
-    } catch {}
-    const norm = (s) => s.replace(/\s+/g, " ").trim();
-    if (!norm(box.textContent || "").includes(norm(text).slice(0, 40))) {
-      range.selectNodeContents(box);
-      sel.removeAllRanges();
-      sel.addRange(range);
+      const ev = new ClipboardEvent("paste", { clipboardData: dt, bubbles: true, cancelable: true });
+      accepted = !box.dispatchEvent(ev); // false from dispatchEvent = editor handled it
+    } catch {
+      accepted = false;
+    }
+    if (accepted && (await waitForText(box, text, 1500))) return { ok: true };
+
+    // The editor ignored the paste: type it instead (still replacing, not appending).
+    if (!norm(box.textContent).includes(norm(text).slice(0, 40))) {
+      selectAll(box);
       document.execCommand("insertText", false, text);
     }
-    const ok = norm(box.textContent || "").includes(norm(text).slice(0, 40));
-    return ok ? { ok: true } : { ok: false, reason: "insert-failed" };
+    return (await waitForText(box, text, 1000)) ? { ok: true } : { ok: false, reason: "insert-failed" };
   }
 
   // ------------------------------------------------- messages from the panel
@@ -519,7 +542,8 @@
         if (!msg.force && msg.expectedChat && current && current !== msg.expectedChat) {
           return sendResponse({ ok: false, reason: "chat-changed", current });
         }
-        sendResponse(insertText(msg.text));
+        insertText(msg.text).then(sendResponse);
+        return true;
       } else if (msg?.type === "ping") {
         sendResponse({ ok: true, title: chatTitle() });
       }
