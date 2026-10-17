@@ -12,6 +12,7 @@ export const SETTINGS_DEFAULTS = {
   contextCount: 20,
   myNames: "", // comma-separated names/nicknames that count as mentioning you
   highlight: true,
+  sendImages: true, // send photos in the message you reply to (needs a vision model)
   prompts: {}, // overrides for PROMPT_DEFAULTS keys
 };
 

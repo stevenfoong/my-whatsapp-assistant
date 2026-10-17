@@ -78,6 +78,10 @@ blockquote {
 }
 
 .row { display: flex; gap: 8px; flex-wrap: wrap; }
+#imageBox { display: grid; gap: 6px; margin-top: 8px; }
+.thumbs { display: flex; gap: 6px; flex-wrap: wrap; }
+.thumbs img { max-width: 100%; max-height: 140px; border-radius: 6px; border: 1px solid var(--border); }
+label.check { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text); }
 .modes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
 
 button {

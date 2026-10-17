@@ -261,3 +261,29 @@ test("older WhatsApp page structure still works", async () => {
   assert.ok(res.payload.messages.some((m) => m.mine && m.text.startsWith("VPN access")));
   await legacy.close();
 });
+
+test("a photo in the message is shown and sent to the AI as a JPEG", async () => {
+  await wa.bringToFront();
+  await wa.hover('[data-id$="A1"] [data-testid="msg-container"]');
+  const btn = wa.locator(".wa-asst-btn");
+  await btn.waitFor({ state: "visible" });
+  await btn.click();
+  await waitFor(async () => (await panel.locator("#targetText").textContent()) === "[image] Error when I connect");
+  await panel.locator("#targetImages img").waitFor();
+  await shot(panel, "5-panel-image");
+
+  await panel.locator('#modeButtons button[data-mode="reply"]').click();
+  await panel.locator(".draft textarea").first().waitFor();
+  const req = requests.at(-1);
+  const images = req.body.messages[1].images;
+  assert.equal(images.length, 1);
+  assert.ok(images[0].startsWith("/9j/"), "sent as JPEG");
+  assert.match(req.body.messages[1].content, /includes the attached image/);
+
+  await panel.locator("#includeImages").uncheck();
+  const before = requests.length;
+  await panel.locator('#modeButtons button[data-mode="ack"]').click();
+  await waitFor(() => requests.length === before + 1);
+  assert.equal(requests.at(-1).body.messages[1].images, undefined);
+  assert.doesNotMatch(requests.at(-1).body.messages[1].content, /attached image/);
+});

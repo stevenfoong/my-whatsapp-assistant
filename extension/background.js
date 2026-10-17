@@ -98,6 +98,20 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return true;
   }
 
+  if (msg?.type === "target-images" && sender.tab) {
+    const key = `target:${sender.tab.id}`;
+    chrome.storage.session.get(key).then((stored) => {
+      const t = stored[key];
+      if (t?.target && t.target.id === msg.id) {
+        t.target.images = msg.images;
+        chrome.storage.session.set({ [key]: t }).catch(() => {
+          /* too large for session storage: drafting continues without images */
+        });
+      }
+    });
+    return false;
+  }
+
   if (msg?.type === "draft") {
     draft(msg)
       .then((drafts) => sendResponse({ ok: true, drafts }))
@@ -112,8 +126,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   return false;
 });
 
-async function draft({ chat, mode, intent, previousDrafts }) {
+async function draft({ chat, mode, intent, previousDrafts, includeImages = true }) {
   const settings = await loadSettings();
+  const images =
+    includeImages && settings.sendImages !== false && mode !== "new" ? chat.target?.images || [] : [];
   const draftCount = Math.max(1, Math.min(5, Number(settings.draftCount) || 3));
   const { system, user } = buildPrompt({
     prompts: settings.prompts,
@@ -122,6 +138,7 @@ async function draft({ chat, mode, intent, previousDrafts }) {
     intent: (intent || "").trim(),
     draftCount,
     previousDrafts,
+    imageCount: images.length,
   });
-  return callModel({ ...settings, draftCount }, system, user);
+  return callModel({ ...settings, draftCount }, system, user, { images });
 }

@@ -22,6 +22,11 @@ panel next to your chats.
   - **Your note**: type a rough intent ("will check tonight") and get it in your style
   - **New message**: start a conversation or post an announcement yourself
 - **Latest message** button: draft a reply to the newest incoming message without hovering.
+- **Photos**: if the message you reply to contains a photo (an error screenshot,
+  for example), it's shown in the panel and sent to the AI along with the text.
+  This needs a vision model; `gemma4:e4b` is one. Untick **Send image to the AI** for
+  one message, or turn it off in Settings. WhatsApp sometimes shows only a blurry
+  preview until a photo is opened, so open it once for best results.
 - Drafts are **editable**, with **Copy** and **Insert into chat**. If you switched
   to another chat in the meantime, it warns you before inserting.
 - **Settings**: endpoint, model, any request headers (one click adds the
@@ -48,7 +53,7 @@ extension's card in `chrome://extensions`, and reload WhatsApp Web.
    (no `/api/chat`). **Model**: e.g. `gemma4:e4b`.
 3. **Add Cloudflare Access headers**, then paste your service token's
    Client ID and Client Secret.
-4. Set **Thinking** to *Off (faster)* if drafts are slow.
+4. Set **Thinking** to *Off (faster)*. Gemma 4 thinks by default, which makes drafts (especially with images) much slower.
 5. Add **Your names in groups** (comma-separated).
 6. Paste your **About me** and **Style** text.
 7. Click **Save**. Chrome asks for permission to reach your endpoint; click **Allow**.

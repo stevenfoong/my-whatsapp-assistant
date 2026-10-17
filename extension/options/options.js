@@ -68,6 +68,7 @@ function collect() {
   s.model = s.model || SETTINGS_DEFAULTS.model;
   s.endpoint = s.endpoint.replace(/\/+$/, "");
   s.highlight = $("highlight").checked;
+  s.sendImages = $("sendImages").checked;
   s.headers = readHeaders();
   s.prompts = {};
   for (const key of PROMPT_KEYS) {
@@ -81,6 +82,7 @@ async function fill() {
   const s = await loadSettings();
   for (const f of FIELDS) $(f).value = s[f] ?? "";
   $("highlight").checked = !!s.highlight;
+  $("sendImages").checked = s.sendImages !== false;
   $("headers").innerHTML = "";
   for (const h of s.headers || []) addHeaderRow(h.name, h.value);
   buildPromptFields(s.prompts || {});

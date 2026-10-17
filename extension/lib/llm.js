@@ -64,7 +64,7 @@ export function buildHeaders(headerList = []) {
   return headers;
 }
 
-export async function callModel(settings, system, user, { fetchImpl = fetch } = {}) {
+export async function callModel(settings, system, user, { fetchImpl = fetch, images = [] } = {}) {
   const base = (settings.endpoint || "").replace(/\/+$/, "");
   if (!base) throw new LLMError("Set the AI endpoint in Settings first.");
   const messages = [
@@ -75,9 +75,16 @@ export async function callModel(settings, system, user, { fetchImpl = fetch } = 
   let body;
   if (settings.api === "openai") {
     url = `${base}/v1/chat/completions`;
+    if (images.length) {
+      messages[1].content = [
+        { type: "text", text: user },
+        ...images.map((b64) => ({ type: "image_url", image_url: { url: `data:image/jpeg;base64,${b64}` } })),
+      ];
+    }
     body = { model: settings.model, messages, temperature: Number(settings.temperature) };
   } else {
     url = `${base}/api/chat`;
+    if (images.length) messages[1].images = images;
     body = {
       model: settings.model,
       messages,

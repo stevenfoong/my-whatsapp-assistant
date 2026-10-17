@@ -68,7 +68,7 @@ function line(m) {
  * Build the system and user prompts.
  * chat: { title, isGroup, messages: [{sender, text, mine}], target: {sender, text} | null }
  */
-export function buildPrompt({ prompts, mode, chat, intent, draftCount, previousDrafts }) {
+export function buildPrompt({ prompts, mode, chat, intent, draftCount, previousDrafts, imageCount = 0 }) {
   const p = effectivePrompts(prompts);
   const system =
     "You draft chat replies on my behalf. I will review and send them myself.\n\n" +
@@ -85,6 +85,12 @@ export function buildPrompt({ prompts, mode, chat, intent, draftCount, previousD
   parts.push("Conversation so far (oldest first; 'Me' is me):\n" + (history || "(no earlier messages)"));
   if (mode !== "new" && chat.target) {
     parts.push(`Target message from ${chat.target.sender || "them"}:\n${chat.target.text}`);
+    if (imageCount) {
+      parts.push(
+        `The target message includes ${imageCount === 1 ? "the attached image" : `the ${imageCount} attached images`}. ` +
+          "Look at it carefully (e.g. read any error text in a screenshot) and use what it shows.",
+      );
+    }
   }
   parts.push(`Task: ${task}`);
   if (intent) parts.push(`My intent: ${intent}`);

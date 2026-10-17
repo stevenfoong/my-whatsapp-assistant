@@ -45,7 +45,9 @@
     return !!(el.querySelector("[data-pre-plain-text]") || el.querySelector('[data-testid="msg-container"]'));
   }
 
-  let settings = { myNames: "", highlight: true, contextCount: 20 };
+  let settings = { myNames: "", highlight: true, contextCount: 20, sendImages: true };
+  const IMG_MAX = 1024; // longest side, in pixels, of images sent to the AI
+  const IMG_LIMIT = 2; // images per message
 
   function loadSettings() {
     try {
@@ -146,6 +148,8 @@
       text = spans.map(textOf).filter(Boolean).join("\n");
       if (!text) text = textOf(meta).replace(quotedAuthor, "").replace(quotedText, "").trim();
     }
+    const imageCount = imageElements(row).length;
+    if (imageCount) text = text ? `[image] ${text}` : "[image]";
     if (!text) text = "[media or non-text message]";
     return {
       id,
@@ -155,7 +159,61 @@
       text,
       quotedAuthor,
       quotedText,
+      imageCount,
     };
+  }
+
+  // ---------------------------------------------------------------- images
+
+  /** Photos inside a message (not emoji, avatars or quoted previews). */
+  function imageElements(row) {
+    return [...row.querySelectorAll("img")].filter((img) => {
+      if (img.closest('[role="button"]')) return false; // quoted message preview
+      const r = img.getBoundingClientRect();
+      return r.width >= 60 && r.height >= 60;
+    });
+  }
+
+  function drawToJpeg(source, w, h) {
+    const scale = Math.min(1, IMG_MAX / Math.max(w, h));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(w * scale));
+    canvas.height = Math.max(1, Math.round(h * scale));
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#fff"; // transparent PNGs become white, not black
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(source, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL("image/jpeg", 0.85).split(",")[1];
+  }
+
+  async function imageToBase64(img) {
+    try {
+      if (img.decode) await img.decode().catch(() => {});
+      if (img.naturalWidth) return drawToJpeg(img, img.naturalWidth, img.naturalHeight);
+    } catch {
+      /* canvas refused (cross-origin image); try fetching the bytes instead */
+    }
+    try {
+      const blob = await (await fetch(img.currentSrc || img.src)).blob();
+      const bmp = await createImageBitmap(blob);
+      return drawToJpeg(bmp, bmp.width, bmp.height);
+    } catch {
+      return null;
+    }
+  }
+
+  async function imagesOf(row) {
+    if (!row || settings.sendImages === false) return [];
+    const out = [];
+    for (const img of imageElements(row).slice(0, IMG_LIMIT)) {
+      const b64 = await imageToBase64(img);
+      if (b64) out.push(b64);
+    }
+    return out;
+  }
+
+  function rowById(id) {
+    return messageRows().find((r) => r.getAttribute("data-id") === id) || null;
   }
 
   function forContext(m) {
@@ -163,7 +221,7 @@
     if (m.quotedAuthor && m.quotedText) {
       text = `(replying to ${m.quotedAuthor}: "${m.quotedText.slice(0, 120)}") ${text}`;
     }
-    return { sender: m.sender, text, mine: m.mine };
+    return { sender: m.sender, text, mine: m.mine, imageCount: m.imageCount || 0 };
   }
 
   /** Read the open chat. targetRow = the message to answer (null for a new message). */
@@ -317,9 +375,11 @@
     e.preventDefault();
     e.stopPropagation();
     if (!hoverRow) return;
-    const payload = readChat(hoverRow);
+    const row = hoverRow;
+    const payload = readChat(row);
     btn.style.display = "none";
     try {
+      // Text first (keeps the click's permission to open the panel), images follow.
       chrome.runtime.sendMessage({ type: "open-target", payload }, (res) => {
         if (chrome.runtime.lastError) {
           showToast("Reply Assistant was updated. Reload this page (F5) to use it.");
@@ -327,6 +387,13 @@
         }
         if (res && res.opened === false) {
           showToast("Click the Reply Assistant icon in the toolbar to open the panel.");
+        }
+        if (payload.target?.imageCount) {
+          imagesOf(row).then((images) => {
+            if (images.length) {
+              chrome.runtime.sendMessage({ type: "target-images", id: payload.target.id, images });
+            }
+          });
         }
       });
     } catch {
@@ -377,7 +444,13 @@
     try {
       if (msg?.type === "read-latest") {
         if (!$(SEL.main)) return sendResponse({ ok: false, reason: "no-chat" });
-        sendResponse({ ok: true, payload: readChat(null, { latest: true }) });
+        const payload = readChat(null, { latest: true });
+        const row = payload.target && rowById(payload.target.id);
+        imagesOf(payload.target?.imageCount ? row : null).then((images) => {
+          if (images.length) payload.target.images = images;
+          sendResponse({ ok: true, payload });
+        });
+        return true;
       } else if (msg?.type === "read-new") {
         if (!$(SEL.main)) return sendResponse({ ok: false, reason: "no-chat" });
         sendResponse({ ok: true, payload: readChat(null) });

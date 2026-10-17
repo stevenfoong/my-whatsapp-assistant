@@ -63,6 +63,7 @@ function renderChat() {
     $("targetSender").textContent = c.target.sender || "them";
     $("targetText").textContent = c.target.text;
   }
+  renderImages();
   $("modeButtons").hidden = state.isNew;
   $("intentLabel").textContent = state.isNew
     ? "What do you want to say?"
@@ -71,6 +72,34 @@ function renderChat() {
     ? "e.g. remind everyone the VPN maintenance is tonight 11pm, about 15 minutes downtime"
     : "e.g. will check tonight and update tomorrow morning";
   $("draftCustom").textContent = state.isNew ? "Draft message" : "Draft from my note";
+}
+
+function renderImages() {
+  const t = state.chat?.target;
+  const images = t?.images || [];
+  const expected = t?.imageCount || 0;
+  $("imageBox").hidden = !(t && !state.isNew && (images.length || expected));
+  const box = $("targetImages");
+  box.innerHTML = "";
+  for (const b64 of images) {
+    const img = document.createElement("img");
+    img.alt = "Image from the message";
+    img.src = `data:image/jpeg;base64,${b64}`;
+    box.appendChild(img);
+  }
+  $("includeImages").closest("label").hidden = images.length === 0;
+  $("imageNote").hidden = images.length > 0;
+  const justOpened = state.chat?.at && Date.now() - state.chat.at < 4000;
+  if (!images.length && justOpened) {
+    $("imageNote").textContent = "Reading the image…";
+    clearTimeout(renderImages.timer);
+    renderImages.timer = setTimeout(renderImages, 4000);
+  } else {
+    $("imageNote").textContent =
+      "This message has an image, but it couldn't be read, so only the text is used. Open the photo " +
+      "in WhatsApp once (so the full image loads), then click Draft again. Image sending can be " +
+      "turned off in Settings.";
+  }
 }
 
 function renderDrafts() {
@@ -146,6 +175,7 @@ async function runDraft(mode, intent, { fresh = false } = {}) {
       mode,
       intent,
       previousDrafts: fresh ? state.drafts : null,
+      includeImages: $("includeImages").checked,
     });
     if (!res?.ok) {
       setStatus(esc(res?.error || "Something went wrong."), "error");
@@ -223,7 +253,15 @@ async function loadStoredTarget() {
   const stored = await chrome.storage.session.get(key);
   if (stored[key]) loadChat(stored[key]);
   chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === "session" && changes[key]?.newValue) loadChat(changes[key].newValue);
+    const next = changes[key]?.newValue;
+    if (area !== "session" || !next) return;
+    if (state.chat && next.at && next.at === state.chat.at) {
+      // Same message, images arrived a moment later: keep drafts and notes.
+      state.chat = next;
+      renderImages();
+    } else {
+      loadChat(next);
+    }
   });
 }
 

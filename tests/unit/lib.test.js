@@ -110,3 +110,32 @@ test("missing endpoint and network errors", async () => {
     /Could not reach the model server/,
   );
 });
+
+test("image note is added only when images are attached", () => {
+  const withImg = buildPrompt({ prompts: {}, mode: "reply", chat, draftCount: 3, imageCount: 1 }).user;
+  assert.match(withImg, /includes the attached image/);
+  const without = buildPrompt({ prompts: {}, mode: "reply", chat, draftCount: 3 }).user;
+  assert.doesNotMatch(without, /attached image/);
+  const newMsg = buildPrompt({ prompts: {}, mode: "new", chat, draftCount: 3, imageCount: 1 }).user;
+  assert.doesNotMatch(newMsg, /attached image/);
+});
+
+test("images are attached in the right format for each API", async () => {
+  let body;
+  const capture = fakeFetch((url, init) => {
+    body = JSON.parse(init.body);
+    return url.endsWith("/api/chat")
+      ? json({ message: { content: '["ok"]' } })
+      : json({ choices: [{ message: { content: '["ok"]' } }] });
+  });
+  await callModel(base, "s", "u", { fetchImpl: capture, images: ["QUJD"] });
+  assert.deepEqual(body.messages[1].images, ["QUJD"]);
+  assert.equal(body.messages[1].content, "u");
+  await callModel({ ...base, api: "openai" }, "s", "u", { fetchImpl: capture, images: ["QUJD"] });
+  assert.deepEqual(body.messages[1].content, [
+    { type: "text", text: "u" },
+    { type: "image_url", image_url: { url: "data:image/jpeg;base64,QUJD" } },
+  ]);
+  await callModel(base, "s", "u", { fetchImpl: capture });
+  assert.equal(body.messages[1].images, undefined);
+});
