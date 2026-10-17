@@ -300,3 +300,21 @@ test("a photo without caption, drawn as a background, is still sent", async () =
   await panel.locator('#modeButtons button[data-mode="reply"]').click();
   await waitFor(() => requests.at(-1).body.messages[1].images?.length === 1);
 });
+
+test("a group with only one other sender so far is still a group", async () => {
+  const page = await context.newPage();
+  await page.goto("https://web.whatsapp.com/?single=1");
+  await page.waitForSelector(".wa-asst-btn", { state: "attached" });
+  // Keep only Clark's message.
+  await page.evaluate(() => {
+    for (const row of document.querySelectorAll('[role="row"]')) {
+      if (!row.textContent.includes("AWS server is down")) row.remove();
+    }
+  });
+  const id = await sw.evaluate(async () => (await chrome.tabs.query({ url: "https://web.whatsapp.com/?single=1" }))[0].id);
+  const res = await sw.evaluate((tab) => chrome.tabs.sendMessage(tab, { type: "read-latest" }), id);
+  assert.equal(res.payload.messages.length, 0, "only Clark's message is on this page");
+  assert.equal(res.payload.target.sender, "Clark");
+  assert.equal(res.payload.isGroup, true);
+  await page.close();
+});

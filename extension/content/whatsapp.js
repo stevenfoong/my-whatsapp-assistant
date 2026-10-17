@@ -135,7 +135,7 @@
       const pre = meta.getAttribute("data-pre-plain-text") || "";
       const m = pre.match(/\]\s*(.*?):\s*$/);
       if (m) sender = m[1].trim();
-      const quoted = $(SEL.quoted, meta);
+      const quoted = [...meta.querySelectorAll(SEL.quoted)].find(isQuoteBlock) || null;
       if (quoted) {
         const spans = quoted.querySelectorAll('span[dir="auto"], span.quoted-mention');
         if (spans.length) quotedAuthor = textOf(spans[0]);
@@ -168,10 +168,16 @@
   // Quoted-reply previews (which can contain a small thumbnail of the quoted
   // photo). Photos themselves also sit in a clickable role="button" area, so
   // only blocks that look like quotes are excluded.
-  function quotedBlocks(row) {
-    return [...row.querySelectorAll('[role="button"]')].filter(
-      (b) => b.querySelector(".quoted-mention") || b.closest("[data-pre-plain-text]"),
+  function isQuoteBlock(b) {
+    return !!(
+      b.querySelector(".quoted-mention") ||
+      /quot/i.test(b.getAttribute("aria-label") || "") ||
+      b.querySelector('[data-testid*="quoted"]')
     );
+  }
+
+  function quotedBlocks(row) {
+    return [...row.querySelectorAll('[role="button"]')].filter(isQuoteBlock);
   }
 
   function bigEnough(el) {
@@ -252,8 +258,8 @@
   function readChat(targetRow, { latest = false } = {}) {
     const rows = messageRows();
     const parsed = rows.map(parseRow);
-    const isGroup = chatIsGroup(parsed);
     const title = chatTitle();
+    const isGroup = chatIsGroup(parsed, title);
     if (!isGroup && title) {
       for (const m of parsed) if (!m.mine && m.sender === "Them") m.sender = title;
     }
@@ -287,10 +293,13 @@
 
   // Newer WhatsApp ids don't say whether a chat is a group, so a chat counts as a
   // group when the old marker is there or more than one other person has written.
-  function chatIsGroup(parsed) {
+  function chatIsGroup(parsed, title = chatTitle()) {
     if (parsed.some((m) => m.isGroupRow)) return true;
     const senders = new Set(parsed.filter((m) => !m.mine && m.sender !== "Them").map((m) => m.sender));
-    return senders.size > 1;
+    if (senders.size > 1) return true;
+    // In a one-to-one chat the sender is the chat itself; anyone else means a group.
+    const norm = (x) => (x || "").replace(/\s+/g, " ").trim().toLowerCase();
+    return !!title && [...senders].some((name) => norm(name) !== norm(title));
   }
 
   // ------------------------------------------------- "for me" highlighting
