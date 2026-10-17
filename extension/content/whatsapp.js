@@ -11,22 +11,39 @@
     main: "#main",
     header: "#main header",
     titleCandidates: [
+      '#main [data-testid="conversation-info-header-chat-title"]',
       '#main header [data-testid="conversation-info-header-chat-title"]',
       '#main header span[dir="auto"][title]',
       '#main header span[dir="auto"]',
     ],
     row: "[data-id]",
+    // Older WhatsApp builds mark direction with these classes...
     bubbleIn: ".message-in",
     bubbleOut: ".message-out",
+    // ...newer ones only have a bubble "tail" on the first message of a run.
+    tailIn: '[data-testid="tail-in"]',
+    tailOut: '[data-testid="tail-out"]',
+    container: '[data-testid="msg-container"]',
+    panel: '[data-testid="conversation-panel-messages"]',
     meta: "[data-pre-plain-text]",
     textSpan: "span.selectable-text",
     quoted: 'div[role="button"]',
     composer: [
+      '#main [data-testid="conversation-compose-box-input"]',
       '#main footer div[contenteditable="true"][role="textbox"]',
       '#main footer div[contenteditable="true"]',
     ],
   };
-  const ROW_ID = /^(true|false)_/;
+  const OLD_ROW_ID = /^(true|false)_/;
+
+  // A message row: has a data-id, and either the old "true_/false_" id format
+  // or (newer WhatsApp) a message bubble / text inside it.
+  function isMessageRow(el) {
+    const id = el?.getAttribute?.("data-id");
+    if (!id) return false;
+    if (OLD_ROW_ID.test(id)) return true;
+    return !!(el.querySelector("[data-pre-plain-text]") || el.querySelector('[data-testid="msg-container"]'));
+  }
 
   let settings = { myNames: "", highlight: true, contextCount: 20 };
 
@@ -80,14 +97,31 @@
   function messageRows() {
     const main = $(SEL.main);
     if (!main) return [];
-    const all = [...main.querySelectorAll(SEL.row)].filter((el) => ROW_ID.test(el.dataset.id || ""));
+    const all = [...main.querySelectorAll(SEL.row)].filter(isMessageRow);
     // Drop rows nested inside another row (e.g. quoted previews).
     return all.filter((el) => !all.some((other) => other !== el && other.contains(el)));
   }
 
+  function bubbleOf(row) {
+    return $(SEL.bubbleIn, row) || $(SEL.bubbleOut, row) || $(SEL.container, row) || row;
+  }
+
+  /** true = sent by me. Tries explicit markers first, then which side the bubble is on. */
+  function isMine(row) {
+    const id = row.getAttribute("data-id") || "";
+    if (id.startsWith("true_")) return true;
+    if (id.startsWith("false_")) return false;
+    if ($(SEL.bubbleOut, row) || $(SEL.tailOut, row)) return true;
+    if ($(SEL.bubbleIn, row) || $(SEL.tailIn, row)) return false;
+    const bubble = bubbleOf(row).getBoundingClientRect();
+    const area = ($(SEL.panel) || $(SEL.main)).getBoundingClientRect();
+    if (!bubble.width || !area.width) return false;
+    return bubble.left - area.left > area.right - bubble.right;
+  }
+
   function parseRow(row) {
-    const id = row.dataset.id;
-    const mine = id.startsWith("true_") || !!$(SEL.bubbleOut, row);
+    const id = row.getAttribute("data-id");
+    const mine = isMine(row);
     const isGroupRow = /@g\.us/.test(id);
     const meta = $(SEL.meta, row);
     let sender = "";
@@ -136,7 +170,7 @@
   function readChat(targetRow, { latest = false } = {}) {
     const rows = messageRows();
     const parsed = rows.map(parseRow);
-    const isGroup = parsed.some((m) => m.isGroupRow);
+    const isGroup = chatIsGroup(parsed);
     let idx = -1;
     if (targetRow) idx = rows.indexOf(targetRow);
     else if (latest) {
@@ -163,6 +197,14 @@
       target,
       messages: history.map(forContext),
     };
+  }
+
+  // Newer WhatsApp ids don't say whether a chat is a group, so a chat counts as a
+  // group when the old marker is there or more than one other person has written.
+  function chatIsGroup(parsed) {
+    if (parsed.some((m) => m.isGroupRow)) return true;
+    const senders = new Set(parsed.filter((m) => !m.mine && m.sender !== "Them").map((m) => m.sender));
+    return senders.size > 1;
   }
 
   // ------------------------------------------------- "for me" highlighting
@@ -199,11 +241,12 @@
   function highlight() {
     const rows = messageRows();
     const nameList = names();
-    const group = rows.some((r) => /@g\.us/.test(r.dataset.id));
-    for (const row of rows) {
-      const on = settings.highlight && group && isForMe(parseRow(row), nameList);
+    const parsed = rows.map(parseRow);
+    const group = chatIsGroup(parsed);
+    rows.forEach((row, i) => {
+      const on = settings.highlight && group && isForMe(parsed[i], nameList);
       row.classList.toggle("wa-asst-forme", !!on);
-    }
+    });
   }
 
   new MutationObserver(scheduleHighlight).observe(document.body, { childList: true, subtree: true });
@@ -234,10 +277,9 @@
   let hideTimer = null;
 
   function placeButton(row) {
-    const bubble = $(SEL.bubbleIn, row) || $(SEL.bubbleOut, row) || row;
-    const rect = bubble.getBoundingClientRect();
+    const rect = bubbleOf(row).getBoundingClientRect();
     if (!rect.width) return;
-    const incoming = !!$(SEL.bubbleIn, row) || row.dataset.id.startsWith("false_");
+    const incoming = !isMine(row);
     btn.style.display = "block";
     const w = btn.offsetWidth || 64;
     const left = incoming ? rect.right + 6 : rect.left - w - 6;
@@ -252,8 +294,10 @@
         clearTimeout(hideTimer);
         return;
       }
-      const row = e.target.closest && e.target.closest(`${SEL.main} ${SEL.row}`);
-      if (row && ROW_ID.test(row.dataset.id || "")) {
+      let row = e.target.closest && e.target.closest(`${SEL.main} ${SEL.row}`);
+      // Quoted previews can carry their own data-id; use the outer message row.
+      while (row && !isMessageRow(row)) row = row.parentElement?.closest(`${SEL.main} ${SEL.row}`);
+      if (row) {
         clearTimeout(hideTimer);
         hoverRow = row;
         placeButton(row);
@@ -353,5 +397,5 @@
   });
 
   // Exposed for tests only.
-  window.__waAssistant = { readChat, parseRow, messageRows, isForMe, insertText, chatTitle };
+  window.__waAssistant = { readChat, parseRow, messageRows, isForMe, insertText, chatTitle, isMine };
 })();

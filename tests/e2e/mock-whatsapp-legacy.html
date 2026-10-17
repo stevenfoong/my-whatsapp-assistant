@@ -1,0 +1,61 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>WhatsApp</title>
+<style>
+  body { font-family: sans-serif; margin: 0; }
+  #main { width: 700px; margin: 0 auto; }
+  .message-in, .message-out { display: inline-block; padding: 6px 10px; margin: 6px; border-radius: 8px; max-width: 70%; }
+  .message-in { background: #eee; }
+  .message-out { background: #d9fdd3; float: right; }
+  [role="row"] { overflow: hidden; }
+  footer div[contenteditable] { border: 1px solid #999; min-height: 30px; margin: 10px; }
+</style>
+</head>
+<body>
+<!-- A simplified copy of WhatsApp Web's structure, used only by the tests. -->
+<div id="app">
+  <div id="main">
+    <header><div><span dir="auto" title="IT Support Group">IT Support Group</span></div></header>
+    <div role="application">
+      <div role="row"><div data-id="false_120363000@g.us_AAA1_60111@c.us">
+        <div class="message-in focusable-list-item">
+          <div class="copyable-text" data-pre-plain-text="[09:58, 17/10/2026] Ann Lee: ">
+            <div><span dir="ltr" class="selectable-text copyable-text"><span>Good morning everyone <img alt="😀" src="data:,"></span></span></div>
+          </div>
+        </div>
+      </div></div>
+      <div role="row"><div data-id="true_120363000@g.us_AAA2">
+        <div class="message-out focusable-list-item">
+          <div class="copyable-text" data-pre-plain-text="[09:59, 17/10/2026] Steven: ">
+            <div><span dir="ltr" class="selectable-text copyable-text"><span>VPN access for the new staff is ready.</span></span></div>
+          </div>
+        </div>
+      </div></div>
+      <div role="row"><div data-id="false_120363000@g.us_AAA3_60122@c.us">
+        <div class="message-in focusable-list-item">
+          <div class="copyable-text" data-pre-plain-text="[10:01, 17/10/2026] Bruce Wayne: ">
+            <div role="button"><span dir="auto">You</span><span class="quoted-mention">VPN access for the new staff is ready.</span></div>
+            <div><span dir="ltr" class="selectable-text copyable-text"><span>Thanks! One of them still cannot connect.</span></span></div>
+          </div>
+        </div>
+      </div></div>
+      <div role="row"><div data-id="false_120363000@g.us_AAA4_60133@c.us">
+        <div class="message-in focusable-list-item">
+          <div class="copyable-text" data-pre-plain-text="[10:05, 17/10/2026] Clark: ">
+            <div><span dir="ltr" class="selectable-text copyable-text"><span>Steven the AWS server is down</span></span></div>
+          </div>
+        </div>
+      </div></div>
+      <div role="row"><div data-id="false_120363000@g.us_AAA5_60144@c.us">
+        <div class="message-in focusable-list-item">
+          <div class="copyable-text" data-pre-plain-text="[10:06, 17/10/2026] Diana: ">
+            <div><span dir="ltr" class="selectable-text copyable-text"><span>Lunch at 1pm?</span></span></div>
+          </div>
+        </div>
+      </div></div>
+    </div>
+    <footer><div contenteditable="true" role="textbox" data-tab="10"></div></footer>
+  </div>
+</div>
+</body>
+</html>

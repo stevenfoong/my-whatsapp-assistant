@@ -10,7 +10,9 @@ import { chromium } from "playwright-core";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, "../..");
+// Current WhatsApp Web structure, plus the older one (served with ?legacy=1).
 const MOCK_HTML = fs.readFileSync(path.join(here, "mock-whatsapp.html"), "utf8");
+const LEGACY_HTML = fs.readFileSync(path.join(here, "mock-whatsapp-legacy.html"), "utf8");
 const EXECUTABLE = process.env.CHROMIUM_PATH || "/opt/pw-browsers/chromium";
 
 let server;
@@ -94,7 +96,11 @@ before(async () => {
     args: [`--disable-extensions-except=${extDir}`, `--load-extension=${extDir}`, "--headless=new"],
   });
   await context.route("https://web.whatsapp.com/**", (route) =>
-    route.fulfill({ status: 200, contentType: "text/html", body: MOCK_HTML }),
+    route.fulfill({
+      status: 200,
+      contentType: "text/html",
+      body: route.request().url().includes("legacy=1") ? LEGACY_HTML : MOCK_HTML,
+    }),
   );
   sw = context.serviceWorkers()[0] || (await context.waitForEvent("serviceworker"));
   extId = new URL(sw.url()).host;
@@ -126,13 +132,13 @@ after(async () => {
 test("group messages aimed at me are highlighted", async () => {
   await waitFor(() => wa.$$eval(".wa-asst-forme", (els) => els.length === 2));
   const ids = await wa.$$eval(".wa-asst-forme", (els) => els.map((e) => e.dataset.id));
-  assert.ok(ids.some((i) => i.includes("AAA3")), "quoted reply to me");
-  assert.ok(ids.some((i) => i.includes("AAA4")), "names me");
+  assert.ok(ids.some((i) => i.endsWith("04")), "quoted reply to me");
+  assert.ok(ids.some((i) => i.endsWith("05")), "names me");
 });
 
 test("hover Draft button loads the message into the panel", async () => {
   await wa.bringToFront();
-  await wa.hover('[data-id*="AAA4"] .message-in');
+  await wa.hover('[data-id$="05"] [data-testid="msg-container"]');
   const btn = wa.locator(".wa-asst-btn");
   await btn.waitFor({ state: "visible" });
   await btn.click();
@@ -158,6 +164,8 @@ test("Gather info drafts with full context and no Origin header", async () => {
   const user = req.body.messages[1].content;
   assert.match(user, /Ann Lee: Good morning everyone 😀/);
   assert.match(user, /Me: VPN access for the new staff is ready\./);
+  // No tail and no class on this one: direction comes from the bubble being on the right.
+  assert.match(user, /Me: Please restart your laptop first\./);
   assert.match(user, /Bruce Wayne: \(replying to You: "VPN access for the new staff is ready\."\) Thanks! One of them still cannot connect\./);
   assert.match(user, /Target message from Clark:\nSteven the AWS server is down/);
   assert.doesNotMatch(user, /Lunch at 1pm/, "messages after the target are not included");
@@ -177,9 +185,8 @@ test("Insert puts the (edited) draft into the message box without sending", asyn
 
 test("Insert warns when a different chat is open", async () => {
   await wa.evaluate(() => {
-    const t = document.querySelector("#main header span");
+    const t = document.querySelector('[data-testid="conversation-info-header-chat-title"]');
     t.textContent = "Family";
-    t.setAttribute("title", "Family");
     document.querySelector("footer [contenteditable]").textContent = "";
   });
   await panel.locator(".draft .insert").nth(1).click();
@@ -188,9 +195,8 @@ test("Insert warns when a different chat is open", async () => {
   await panel.locator("#insertAnyway").click();
   await waitFor(async () => (await wa.locator("footer [contenteditable]").textContent()).includes("Draft two"));
   await wa.evaluate(() => {
-    const t = document.querySelector("#main header span");
+    const t = document.querySelector('[data-testid="conversation-info-header-chat-title"]');
     t.textContent = "IT Support Group";
-    t.setAttribute("title", "IT Support Group");
   });
 });
 
@@ -239,4 +245,19 @@ test("model errors are shown, not swallowed", async () => {
     await opts.close();
   }
   llmMode = "ok";
+});
+
+test("older WhatsApp page structure still works", async () => {
+  const legacy = await context.newPage();
+  await legacy.goto("https://web.whatsapp.com/?legacy=1");
+  await legacy.waitForSelector(".wa-asst-btn", { state: "attached" });
+  await waitFor(() => legacy.$$eval(".wa-asst-forme", (els) => els.length === 2));
+  const id = await sw.evaluate(async () => (await chrome.tabs.query({ url: "https://web.whatsapp.com/?legacy=1" }))[0].id);
+  const res = await sw.evaluate((tab) => chrome.tabs.sendMessage(tab, { type: "read-latest" }), id);
+  assert.equal(res.ok, true);
+  assert.equal(res.payload.title, "IT Support Group");
+  assert.equal(res.payload.isGroup, true);
+  assert.equal(res.payload.target.text, "Lunch at 1pm?");
+  assert.ok(res.payload.messages.some((m) => m.mine && m.text.startsWith("VPN access")));
+  await legacy.close();
 });

@@ -14,7 +14,7 @@
 .wa-asst-btn:hover { background: #0e6f64; }
 
 .wa-asst-forme .message-in,
-.wa-asst-forme [class*="message-in"] {
+.wa-asst-forme [data-testid="msg-container"] {
   outline: 2px solid #f0b429 !important;
   outline-offset: 2px;
   border-radius: 8px;
