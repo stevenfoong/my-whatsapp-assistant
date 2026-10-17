@@ -1,0 +1,12 @@
+{
+  "name": "my-whatsapp-assistant",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/unit/*.test.js",
+    "test:e2e": "node --test --test-concurrency=1 tests/e2e/*.test.js"
+  },
+  "devDependencies": {
+    "playwright-core": "1.56.1"
+  }
+}

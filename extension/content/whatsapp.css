@@ -1,0 +1,35 @@
+.wa-asst-btn {
+  position: fixed;
+  z-index: 2147483646;
+  padding: 3px 9px;
+  border: 0;
+  border-radius: 12px;
+  background: #128c7e;
+  color: #fff;
+  font: 600 12px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.wa-asst-btn:hover { background: #0e6f64; }
+
+.wa-asst-forme .message-in,
+.wa-asst-forme [class*="message-in"] {
+  outline: 2px solid #f0b429 !important;
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+.wa-asst-toast {
+  position: fixed;
+  z-index: 2147483647;
+  right: 16px;
+  bottom: 80px;
+  max-width: 320px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: #222e35;
+  color: #e9edef;
+  font: 13px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+}

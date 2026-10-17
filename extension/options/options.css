@@ -1,0 +1,29 @@
+main.settings { max-width: 760px; margin: 0 auto; padding: 16px; }
+form { display: grid; gap: 14px; }
+h2 { margin: 0; font-size: 14px; }
+label { display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
+label.check { display: flex; align-items: center; gap: 8px; color: var(--text); }
+small { color: var(--muted); font-size: 12px; }
+code { font-size: 12px; }
+input[type="text"], input[type="url"], input[type="password"], input[type="number"], select {
+  font: inherit;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 7px 10px;
+  width: 100%;
+}
+input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.headers-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+#headers { display: grid; gap: 6px; }
+.header-row { display: grid; grid-template-columns: 1fr 1.4fr auto auto; gap: 6px; }
+#prompts { display: grid; gap: 12px; }
+#prompts textarea { min-height: 70px; }
+.actions { display: flex; justify-content: flex-end; gap: 8px; }
+@media (max-width: 520px) {
+  .grid2 { grid-template-columns: 1fr; }
+  .header-row { grid-template-columns: 1fr 1fr; }
+}

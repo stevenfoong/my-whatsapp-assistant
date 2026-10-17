@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "WhatsApp Reply Assistant",
+  "version": "0.1.0",
+  "description": "Drafts WhatsApp Web replies with your own self-hosted AI. Reads only the open chat, never sends.",
+  "minimum_chrome_version": "116",
+  "permissions": ["sidePanel", "storage", "clipboardWrite", "declarativeNetRequestWithHostAccess"],
+  "host_permissions": ["https://web.whatsapp.com/*"],
+  "optional_host_permissions": ["https://*/*", "http://*/*"],
+  "background": { "service_worker": "background.js", "type": "module" },
+  "side_panel": { "default_path": "sidepanel/panel.html" },
+  "options_page": "options/options.html",
+  "action": {
+    "default_title": "WhatsApp Reply Assistant",
+    "default_icon": { "16": "icons/icon16.png", "32": "icons/icon32.png", "48": "icons/icon48.png" }
+  },
+  "icons": { "16": "icons/icon16.png", "32": "icons/icon32.png", "48": "icons/icon48.png", "128": "icons/icon128.png" },
+  "content_scripts": [
+    {
+      "matches": ["https://web.whatsapp.com/*"],
+      "js": ["content/whatsapp.js"],
+      "css": ["content/whatsapp.css"],
+      "run_at": "document_idle"
+    }
+  ]
+}

@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Reply Assistant Settings</title>
+  <link rel="stylesheet" href="../sidepanel/panel.css">
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <header class="top"><h1>Reply Assistant · Settings</h1></header>
+  <main class="settings">
+    <form id="form" autocomplete="off">
+      <section class="card">
+        <h2>AI endpoint</h2>
+        <label>Endpoint URL
+          <input id="endpoint" type="url" placeholder="https://gemma.example.com" required>
+          <small>The base URL of your Ollama server (no <code>/api/chat</code> at the end).</small>
+        </label>
+        <div class="grid2">
+          <label>API type
+            <select id="api">
+              <option value="ollama">Ollama</option>
+              <option value="openai">OpenAI-compatible</option>
+            </select>
+          </label>
+          <label>Model
+            <input id="model" type="text" placeholder="gemma4:e4b">
+          </label>
+        </div>
+
+        <div class="headers-head">
+          <span class="label">Request headers</span>
+          <span class="row">
+            <button type="button" id="addCf" class="ghost small">Add Cloudflare Access headers</button>
+            <button type="button" id="addHeader" class="ghost small">Add header</button>
+          </span>
+        </div>
+        <div id="headers"></div>
+        <small>Stored only in this browser. Use a Cloudflare service token that only covers this endpoint.</small>
+      </section>
+
+      <section class="card">
+        <h2>Drafting</h2>
+        <div class="grid3">
+          <label>Drafts per request <input id="draftCount" type="number" min="1" max="5"></label>
+          <label>Messages of context <input id="contextCount" type="number" min="1" max="100"></label>
+          <label>Timeout (seconds) <input id="timeout" type="number" min="5" max="600"></label>
+          <label>Temperature <input id="temperature" type="number" min="0" max="2" step="0.1"></label>
+          <label>Thinking
+            <select id="think">
+              <option value="">Model default</option>
+              <option value="false">Off (faster)</option>
+              <option value="true">On</option>
+            </select>
+          </label>
+        </div>
+        <label>Your names in groups
+          <input id="myNames" type="text" placeholder="Steven, Steve">
+          <small>Comma-separated. Group messages that say one of these, or reply to one of your messages, get an outline.</small>
+        </label>
+        <label class="check"><input id="highlight" type="checkbox"> Highlight group messages that are likely for me</label>
+      </section>
+
+      <section class="card">
+        <h2>Prompts</h2>
+        <p class="hint">Leave a box empty to use the built-in text shown in it. These are the same keys as the Telegram bot's <code>prompts.yaml</code>.</p>
+        <div id="prompts"></div>
+      </section>
+
+      <div class="actions">
+        <button type="button" id="test" class="ghost">Test connection</button>
+        <button type="submit" class="primary">Save</button>
+      </div>
+      <div id="status" class="status" hidden role="status"></div>
+    </form>
+  </main>
+
+  <template id="headerTpl">
+    <div class="header-row">
+      <input class="h-name" type="text" placeholder="Header name">
+      <input class="h-value" type="password" placeholder="Value">
+      <button type="button" class="h-show ghost small" title="Show or hide value">Show</button>
+      <button type="button" class="h-del ghost small" title="Remove header" aria-label="Remove header">✕</button>
+    </div>
+  </template>
+
+  <script type="module" src="options.js"></script>
+</body>
+</html>

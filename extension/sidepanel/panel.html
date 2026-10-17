@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Reply Assistant</title>
+  <link rel="stylesheet" href="panel.css">
+</head>
+<body>
+  <header class="top">
+    <h1>Reply Assistant</h1>
+    <button id="openSettings" class="icon" title="Settings" aria-label="Settings">⚙</button>
+  </header>
+
+  <main>
+    <section class="card" id="contextCard">
+      <div class="chat-line">
+        <span id="chatTitle" class="chat-title">No chat selected</span>
+        <span id="chatKind" class="pill" hidden></span>
+      </div>
+      <div id="targetBox" hidden>
+        <div class="label">Replying to <b id="targetSender"></b></div>
+        <blockquote id="targetText"></blockquote>
+      </div>
+      <p id="newBox" class="hint" hidden>Writing a <b>new message</b> to this chat.</p>
+      <p id="emptyHint" class="hint">
+        Hover a message in WhatsApp and click <b>✎ Draft</b>, or use the buttons below.
+      </p>
+      <div class="row">
+        <button id="useLatest" class="ghost">Latest message</button>
+        <button id="useNew" class="ghost">New message</button>
+      </div>
+    </section>
+
+    <section class="card" id="actionCard" hidden>
+      <div id="modeButtons" class="modes">
+        <button data-mode="reply">Reply</button>
+        <button data-mode="ack">Acknowledge</button>
+        <button data-mode="gather">Gather info</button>
+      </div>
+      <label for="intent" class="label" id="intentLabel">Or say what you want to reply</label>
+      <textarea id="intent" rows="3" placeholder="e.g. will check tonight and update tomorrow morning"></textarea>
+      <button id="draftCustom" class="primary">Draft from my note</button>
+    </section>
+
+    <section id="status" class="status" hidden role="status"></section>
+
+    <section id="results" hidden>
+      <div class="results-head">
+        <span id="resultsLabel" class="label"></span>
+        <button id="regenerate" class="ghost small">Regenerate</button>
+      </div>
+      <div id="drafts"></div>
+    </section>
+  </main>
+
+  <template id="draftTpl">
+    <div class="draft">
+      <textarea rows="3" aria-label="Draft text"></textarea>
+      <div class="row">
+        <button class="copy ghost small">Copy</button>
+        <button class="insert primary small">Insert into chat</button>
+      </div>
+    </div>
+  </template>
+
+  <script type="module" src="panel.js"></script>
+</body>
+</html>
