@@ -156,6 +156,8 @@ test("Gather info drafts with full context and no Origin header", async () => {
   await panel.locator(".draft textarea").first().waitFor();
   const drafts = await panel.locator(".draft textarea").evaluateAll((els) => els.map((e) => e.value));
   await shot(panel, "2-panel-drafts");
+  assert.equal(await panel.locator("#results").evaluate((el) => el.classList.contains("flash")), true, "new drafts flash");
+  await waitFor(() => panel.evaluate(() => window.scrollY > 0), { timeout: 3000 });
   assert.equal(drafts.length, 3);
   const req = requests.at(-1);
   assert.equal(req.url, "/api/chat");
@@ -276,7 +278,12 @@ test("a photo in the message is shown and sent to the AI as a JPEG", async () =>
   await panel.locator(".draft textarea").first().waitFor();
   const req = requests.at(-1);
   const images = req.body.messages[1].images;
-  assert.equal(images.length, 1);
+  assert.equal(images.length, 1, "the blurry preview stacked under the photo is not sent");
+  assert.equal(await panel.locator("#targetImages img").count(), 1);
+  // It's the sharp 240px photo, not the 24px preview (width from the JPEG header).
+  const jpg = Buffer.from(images[0], "base64");
+  const sof = jpg.findIndex((b, i) => b === 0xff && (jpg[i + 1] === 0xc0 || jpg[i + 1] === 0xc2));
+  assert.equal(jpg.readUInt16BE(sof + 7), 240);
   assert.ok(images[0].startsWith("/9j/"), "sent as JPEG");
   assert.match(req.body.messages[1].content, /includes the attached image/);
 

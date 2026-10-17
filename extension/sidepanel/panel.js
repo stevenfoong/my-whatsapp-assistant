@@ -37,6 +37,7 @@ function setStatus(html, kind = "") {
   el.hidden = false;
   el.className = `status ${kind}`;
   el.innerHTML = html;
+  if (kind === "error" || kind === "warn") el.scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 
 function esc(s) {
@@ -100,6 +101,18 @@ function renderImages() {
       "in WhatsApp once (so the full image loads), then click Draft again. Image sending can be " +
       "turned off in Settings.";
   }
+}
+
+// Bring new drafts into view and flash them briefly so they're easy to notice.
+function revealResults() {
+  const box = $("results");
+  if (box.hidden) return;
+  box.scrollIntoView({ behavior: "smooth", block: "start" });
+  box.classList.remove("flash");
+  void box.offsetWidth; // restart the animation
+  box.classList.add("flash");
+  const first = box.querySelector(".draft textarea");
+  if (first) first.focus({ preventScroll: true });
 }
 
 function renderDrafts() {
@@ -168,6 +181,7 @@ async function runDraft(mode, intent, { fresh = false } = {}) {
   state.lastRequest = { mode, intent };
   setBusy(true);
   setStatus(`<span class="spinner"></span>Drafting (${esc(MODE_LABELS[mode])})…`);
+  $("status").scrollIntoView({ behavior: "smooth", block: "nearest" });
   try {
     const res = await chrome.runtime.sendMessage({
       type: "draft",
@@ -184,6 +198,7 @@ async function runDraft(mode, intent, { fresh = false } = {}) {
     state.drafts = res.drafts;
     setStatus("");
     renderDrafts();
+    revealResults();
   } catch (err) {
     setStatus(esc(`Something went wrong: ${err?.message || err}`), "error");
   } finally {

@@ -185,12 +185,35 @@
     return r.width >= 60 && r.height >= 60;
   }
 
+  // WhatsApp keeps a blurry low-resolution preview stacked under (or next to)
+  // the real photo. Images that overlap are the same picture: keep the sharpest.
+  function dedupeStacked(imgs) {
+    const area = (r) => Math.max(0, r.width) * Math.max(0, r.height);
+    const sharpness = (img) => (img.naturalWidth || 0) * (img.naturalHeight || 0);
+    const sorted = [...imgs].sort((a, b) => sharpness(b) - sharpness(a) || area(b.getBoundingClientRect()) - area(a.getBoundingClientRect()));
+    const kept = [];
+    for (const img of sorted) {
+      const r = img.getBoundingClientRect();
+      const overlaps = kept.some((k) => {
+        const q = k.getBoundingClientRect();
+        const w = Math.min(r.right, q.right) - Math.max(r.left, q.left);
+        const h = Math.min(r.bottom, q.bottom) - Math.max(r.top, q.top);
+        return w > 0 && h > 0 && w * h >= 0.5 * Math.min(area(r), area(q));
+      });
+      const sameSource = kept.some((k) => (k.currentSrc || k.src) === (img.currentSrc || img.src));
+      if (!overlaps && !sameSource) kept.push(img);
+    }
+    // Keep the page order for albums.
+    return imgs.filter((img) => kept.includes(img));
+  }
+
   /** Photos inside a message (not emoji, avatars or quoted previews). */
   function imageElements(row) {
     const quoted = quotedBlocks(row);
     const inQuote = (el) => quoted.some((q) => q.contains(el));
-    const out = [...row.querySelectorAll("img")].filter((img) => !inQuote(img) && bigEnough(img));
-    if (out.length) return out;
+    const imgs = [...row.querySelectorAll("img")].filter((img) => !inQuote(img) && bigEnough(img));
+    if (imgs.length) return dedupeStacked(imgs);
+    const out = [];
     // Some builds draw the photo as a CSS background instead of an <img>.
     for (const el of row.querySelectorAll('[style*="background-image"]')) {
       const m = /url\(["']?(.*?)["']?\)/.exec(el.style.backgroundImage || "");

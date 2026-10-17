@@ -137,3 +137,13 @@ textarea:focus, button:focus-visible { outline: 2px solid var(--accent); outline
 .draft textarea { background: var(--card); border-color: transparent; padding: 2px; }
 .draft textarea:hover { border-color: var(--border); }
 .draft .row { justify-content: flex-end; }
+
+#results { scroll-margin-top: 8px; border-radius: 12px; }
+#results.flash { animation: flash 1.6s ease-out 1; }
+@keyframes flash {
+  0%, 30% { box-shadow: 0 0 0 3px var(--accent); background: var(--accent-soft); }
+  100% { box-shadow: 0 0 0 0 transparent; background: transparent; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #results.flash { animation: none; box-shadow: 0 0 0 2px var(--accent); }
+}
